@@ -115,13 +115,15 @@ class ESPNOWMIDIClientUI(Focusable):
         ctx.text_baseline = ctx.MIDDLE
 
         ctx.font_size = 30
-        ctx.rgb(1, 1, 1).move_to(0, -52).text("MIDI Client")
+        ctx.rgb(1, 0.8, 1).move_to(0, -52).text("MIDI")
 
         bridge_mac = self.midi_comms.bridge_mac
         bridge_connected = bridge_mac is not None
         ctx.font_size = 20
         if bridge_connected:
-            ctx.rgb(0, 0.5, 0).move_to(0, -24).text(f"Connected: {bridge_mac.hex()}")
+            ctx.rgb(0, 0.5, 0).move_to(0, -24).text(
+                f"Connected to {bridge_mac.hex()[-4:].upper()}"
+            )
         else:
             ctx.rgb(0.95, 0.1, 0.2).move_to(0, -24).text("Not connected to bridge")
         ctx.rgb(0, 0.8, 0).move_to(0, 0).text(

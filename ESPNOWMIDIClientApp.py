@@ -36,6 +36,12 @@ class ESPNOWMIDIClient(App):
             self.midi_comms, self.current_channel, self.current_octave
         )
 
+        # Modulation state (to avoid sending redundant packets)
+        self._last_modulation: int | None = None
+        self._last_bend: int | None = None
+        self._modulation_threshold = 1  # minimum CC delta to send
+        self._bend_threshold = 1  # minimum 14-bit delta to send
+
         eventbus.on(ButtonDownEvent, self.handle_button_down, self)
         eventbus.on(ButtonUpEvent, self.handle_button_up, self)
 
@@ -70,21 +76,36 @@ class ESPNOWMIDIClient(App):
         y_tilt = min(max(xyz[1], -GRAVITY), GRAVITY)
         bend = round((y_tilt + GRAVITY) / (2 * GRAVITY) * 16383)
 
-        # cc_event = MIDIEvent(
-        #     midi_channel=self.current_channel,
-        #     event_type=MIDIEvent.CONTROL_CHANGE,
-        #     data_byte_1=1,  # CC1 = modulation wheel
-        #     data_byte_2=modulation,
-        # )
-        pb_event = MIDIEvent(
-            midi_channel=self.current_channel,
-            event_type=MIDIEvent.PITCH_BEND,
-            data_byte_1=bend & 0x7F,  # LSB
-            data_byte_2=(bend >> 7) & 0x7F,  # MSB
+        # Change detection: only send when values moved enough
+        send_cc = (
+            self._last_modulation is None
+            or abs(modulation - self._last_modulation) >= self._modulation_threshold
         )
+        send_pb = (
+            self._last_bend is None
+            or abs(bend - self._last_bend) >= self._bend_threshold
+        )
+
         loop = asyncio.get_event_loop()
-        # loop.create_task(self.midi_comms.send_midi_event(cc_event))
-        loop.create_task(self.midi_comms.send_midi_event(pb_event))
+        if send_cc:
+            cc_event = MIDIEvent(
+                midi_channel=self.current_channel,
+                event_type=MIDIEvent.CONTROL_CHANGE,
+                data_byte_1=1,  # CC1 = modulation wheel
+                data_byte_2=modulation,
+            )
+            loop.create_task(self.midi_comms.send_midi_event(cc_event))
+            self._last_modulation = modulation
+
+        if send_pb:
+            pb_event = MIDIEvent(
+                midi_channel=self.current_channel,
+                event_type=MIDIEvent.PITCH_BEND,
+                data_byte_1=bend & 0x7F,  # LSB
+                data_byte_2=(bend >> 7) & 0x7F,  # MSB
+            )
+            loop.create_task(self.midi_comms.send_midi_event(pb_event))
+            self._last_bend = bend
 
     def draw(self, ctx):
         if not self.cleared:
