@@ -55,6 +55,9 @@ class ESPNOWMIDIClient(App):
             self.modulate_per_accel()
 
     def modulate_per_accel(self):
+        if not self.ui.held_buttons:
+            return
+
         xyz: tuple[float, float, float] = acc_read()
 
         # --- Modulation (CC1): X-axis tilt → 0..127 ---
@@ -67,22 +70,20 @@ class ESPNOWMIDIClient(App):
         y_tilt = min(max(xyz[1], -GRAVITY), GRAVITY)
         bend = round((y_tilt + GRAVITY) / (2 * GRAVITY) * 16383)
 
-        cc_event = MIDIEvent(
-            source_mac=self.midi_comms.local_mac,
-            midi_channel=self.current_channel,
-            event_type=MIDIEvent.CONTROL_CHANGE,
-            data_byte_1=1,  # CC1 = modulation wheel
-            data_byte_2=modulation,
-        )
+        # cc_event = MIDIEvent(
+        #     midi_channel=self.current_channel,
+        #     event_type=MIDIEvent.CONTROL_CHANGE,
+        #     data_byte_1=1,  # CC1 = modulation wheel
+        #     data_byte_2=modulation,
+        # )
         pb_event = MIDIEvent(
-            source_mac=self.midi_comms.local_mac,
             midi_channel=self.current_channel,
             event_type=MIDIEvent.PITCH_BEND,
             data_byte_1=bend & 0x7F,  # LSB
             data_byte_2=(bend >> 7) & 0x7F,  # MSB
         )
         loop = asyncio.get_event_loop()
-        loop.create_task(self.midi_comms.send_midi_event(cc_event))
+        # loop.create_task(self.midi_comms.send_midi_event(cc_event))
         loop.create_task(self.midi_comms.send_midi_event(pb_event))
 
     def draw(self, ctx):

@@ -80,6 +80,8 @@ class ESPNOWMIDIClientUI(Focusable):
         button_name = self._button_name(event.button)
         if button_name not in self.BUTTON_NOTE_NAMES:
             return None
+        if button_name not in self.held_buttons:
+            return None
         self.held_buttons.discard(button_name)
         return self._build_midi_event(button_name, note_on=False)
 
@@ -92,7 +94,6 @@ class ESPNOWMIDIClientUI(Focusable):
         event_type = MIDIEvent.NOTE_ON if note_on else MIDIEvent.NOTE_OFF
 
         midi_event = MIDIEvent(
-            source_mac=self.midi_comms.local_mac,
             midi_channel=self.current_channel,
             event_type=event_type,
             data_byte_1=midi_note,
@@ -105,11 +106,6 @@ class ESPNOWMIDIClientUI(Focusable):
             f"{direction} {button_name} {note_label} {verb} ({midi_note})"
         )
         self.last_sent_time = time.ticks_ms()
-
-        # print(
-        #     f"Built MIDI event for {button_name}: "
-        #     f"{'NOTE ON' if note_on else 'NOTE OFF'} {midi_note}"
-        # )
         return midi_event
 
     def draw(self, ctx) -> None:
