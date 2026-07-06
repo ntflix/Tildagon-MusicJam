@@ -16,7 +16,7 @@ from frontboards.twentysix import (
 )
 
 
-class MusicJamUI(Focusable):
+class InstrumentUI(Focusable):
     BUTTON_VALUES = {
         "UP": Note(0),
         "RIGHT": Note(1),

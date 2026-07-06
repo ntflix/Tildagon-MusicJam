@@ -12,7 +12,7 @@ from system.eventbus import eventbus
 from system.scheduler.events import RequestStopAppEvent
 from events.input import Buttons, ButtonDownEvent, ButtonUpEvent
 
-from .MusicJamUI import MusicJamUI
+from .InstrumentUI import InstrumentUI
 from .ButtonEvent import DOWN, UP, ButtonEvent
 from .Comms import Comms
 
@@ -20,7 +20,7 @@ GRAVITY = 9.81  # m/s2
 
 
 class MusicJam(App):
-    ui: MusicJamUI
+    instrumentUI: InstrumentUI
     comms: Comms
     request_fast_updates = False
     xyz: tuple[float, float, float] = (0.0, 0.0, 0.0)
@@ -37,7 +37,7 @@ class MusicJam(App):
         self.overlays = []
         self.cleared = False
         self.button_states = Buttons(self)
-        self.ui = MusicJamUI(onMusicEvent=self.handleButtonEvent)
+        self.instrumentUI = InstrumentUI(onMusicEvent=self.handleButtonEvent)
 
         # Modulation state - avoid sending redundant packets
         self._last_xyz: tuple[float, float, float] = (0.0, 0.0, 0.0)
@@ -61,7 +61,7 @@ class MusicJam(App):
             self.handleAccelerometer()
 
     def handleAccelerometer(self):
-        if not self.ui.held_buttons:
+        if not self.instrumentUI.held_buttons:
             return
         self.xyz = acc_read()
         loop = asyncio.get_event_loop()
@@ -72,7 +72,7 @@ class MusicJam(App):
             clear_background(ctx)
             self.cleared = True
         ctx.save()
-        self.ui.draw(ctx)
+        self.instrumentUI.draw(ctx)
         ctx.restore()
 
     def update(self, delta: int):
@@ -83,10 +83,10 @@ class MusicJam(App):
         loop.create_task(self.comms.sendEvent(musicEvent, buttonEventType))
 
     def handleButtonDown(self, buttonDownEvent: ButtonDownEvent):
-        self.ui.handleButton(buttonDownEvent, DOWN)
+        self.instrumentUI.handleButton(buttonDownEvent, DOWN)
 
     def handleButtonUp(self, buttonUpEvent: ButtonUpEvent):
-        self.ui.handleButton(buttonUpEvent, UP)
+        self.instrumentUI.handleButton(buttonUpEvent, UP)
 
     def quit(self):
         eventbus.emit(RequestStopAppEvent(self))
