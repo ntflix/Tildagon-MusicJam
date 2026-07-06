@@ -1,18 +1,20 @@
 # pyright: reportMissingImports=false
 
 import asyncio
-
-from MusicEvent import MusicEvent
-from app import App
-from imu import acc_read
 import random
 
+from app import App
+from imu import acc_read
 from app_components import clear_background
 from system.eventbus import eventbus
 from system.scheduler.events import RequestStopAppEvent
 from events.input import Buttons, ButtonDownEvent, ButtonUpEvent
 
+from .MusicEvent import MusicEvent
+from .Focusable import Focusable
+from .PickInstrumentUI import PickInstrumentUI
 from .InstrumentUI import InstrumentUI
+from .Instruments import INSTRUMENTS
 from .ButtonEvent import DOWN, UP, ButtonEvent
 from .Comms import Comms
 
@@ -20,7 +22,7 @@ GRAVITY = 9.81  # m/s2
 
 
 class MusicJam(App):
-    instrumentUI: InstrumentUI
+    currentUI: Focusable
     comms: Comms
     request_fast_updates = False
     xyz: tuple[float, float, float] = (0.0, 0.0, 0.0)
@@ -37,7 +39,12 @@ class MusicJam(App):
         self.overlays = []
         self.cleared = False
         self.button_states = Buttons(self)
-        self.instrumentUI = InstrumentUI(onMusicEvent=self.handleButtonEvent)
+        self.currentUI = PickInstrumentUI(
+            instruments=sorted(INSTRUMENTS, key=lambda i: i.midiChannel),
+            onInstrumentSelected=self.onInstrumentSelected,
+            onBack=self.minimise,
+        )
+        self.currentUI = InstrumentUI(onMusicEvent=self.handleButtonEvent)
 
         # Modulation state - avoid sending redundant packets
         self._last_xyz: tuple[float, float, float] = (0.0, 0.0, 0.0)
