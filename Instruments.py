@@ -2,7 +2,7 @@ from .Instrument import Instrument
 
 
 INSTRUMENTS: set[Instrument] = {
-    Instrument("Dreamy Smooth Vox", 1),
+    Instrument("Dreamy Vox", 1),
     Instrument("Bells", 2),
     Instrument("Charm", 3),
     Instrument("Synth Brass", 4),
@@ -13,7 +13,7 @@ INSTRUMENTS: set[Instrument] = {
     Instrument("Jazz Fusion Organ", 9),
     Instrument("Vibraphone", 10),
     Instrument("Violins", 11),
-    Instrument("16mm Dream Sequence", 12),
+    Instrument("Dream Sequence", 12),
     Instrument("Classical Acoustic", 13),
     Instrument("70s Funk Clav", 14),
     Instrument("Ballad", 15),

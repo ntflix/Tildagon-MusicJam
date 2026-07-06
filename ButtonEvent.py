@@ -1,6 +1,4 @@
-from typing import TypeAlias
+ButtonEvent = str
 
-ButtonEvent: TypeAlias = int
-
-DOWN: ButtonEvent = 0
-UP: ButtonEvent = 1
+DOWN: ButtonEvent = "down"
+UP: ButtonEvent = "up"

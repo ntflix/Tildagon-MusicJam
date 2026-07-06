@@ -12,14 +12,17 @@ class PickInstrumentUI(Focusable):
 
     def __init__(
         self,
+        app,
         instruments: list[Instrument],
         onInstrumentSelected: Callable[[Instrument], None],
         onBack: Callable[[], None],
     ):
         self.menu = Menu(
+            app=app,
             menu_items=[instrument.name for instrument in instruments],
-            #         select_handler: Callable[[str, int], Any],
-            select_handler=lambda name, index: onInstrumentSelected(instruments[index]),
+            select_handler=lambda value, index: onInstrumentSelected(
+                instruments[index]
+            ),
             back_handler=onBack,
         )
 
@@ -29,3 +32,7 @@ class PickInstrumentUI(Focusable):
 
     def update(self, delta):
         self.menu.update(delta)
+        return False
+
+    def close(self):
+        self.menu._cleanup()

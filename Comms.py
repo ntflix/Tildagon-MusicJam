@@ -6,11 +6,18 @@ class Comms:
     def __init__(self):
         pass
 
-    async def sendEvent(self, musicEvent: MusicEvent, button_event_type: ButtonEvent):
-        print("sendEvent", musicEvent, button_event_type)
+    async def sendEvent(
+        self,
+        musicEvent: MusicEvent,
+        buttonEventType: ButtonEvent,
+        midiChannel: int,
+    ):
+        print(
+            f"sendEvent: {musicEvent}, buttonEventType: {buttonEventType}, midiChannel: {midiChannel}"
+        )
 
     async def sendXYZ(self, xyz: tuple[float, float, float]):
-        print("sendXYZ", xyz)
+        print(f"sendXYZ: {xyz}")
 
     async def joinRoom(self):
-        print("joinRoom")
+        print(f"joinRoom")

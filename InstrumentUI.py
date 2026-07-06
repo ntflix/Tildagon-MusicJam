@@ -18,12 +18,12 @@ from frontboards.twentysix import (
 
 class InstrumentUI(Focusable):
     BUTTON_VALUES = {
-        "UP": Note(0),
-        "RIGHT": Note(1),
-        "CONFIRM": Note(2),
-        "DOWN": Note(3),
-        "LEFT": Note(4),
-        "CANCEL": Note(5),
+        "A": Note(0),
+        "B": Note(1),
+        "C": Note(2),
+        "D": Note(3),
+        "E": Note(4),
+        "F": Note(5),
         # 2026 frontboard touchpads
         "TOUCH1": Note(0),
         "TOUCH2": Note(1),
@@ -40,10 +40,16 @@ class InstrumentUI(Focusable):
     }
 
     bridge_mac: str | None = None
+    instrumentName: str
 
-    def __init__(self, onMusicEvent: Callable[[MusicEvent, ButtonEvent], None]) -> None:
+    def __init__(
+        self,
+        instrumentName: str,
+        onMusicEvent: Callable[[MusicEvent, ButtonEvent], None],
+    ) -> None:
         super().__init__()
         self.held_buttons: set[Any] = set()
+        self.instrumentName = instrumentName
         self._onMusicEvent = onMusicEvent
 
     def _note_event_for_button(self, button_name: str) -> MusicEvent:
@@ -62,6 +68,8 @@ class InstrumentUI(Focusable):
             print(f"Control button pressed: {button_name}")
 
         if buttonEventType == DOWN:
+            if button_name in self.held_buttons:
+                return
             self.held_buttons.add(button_name)
             self._onMusicEvent(self._note_event_for_button(button_name), DOWN)
         elif buttonEventType == UP:
@@ -74,18 +82,34 @@ class InstrumentUI(Focusable):
         ctx.text_align = ctx.CENTER
         ctx.text_baseline = ctx.MIDDLE
 
-        ctx.font_size = 30
-        ctx.rgb(1, 0.8, 1).move_to(0, -52).text("MIDI")
-
         bridge_mac = self.bridge_mac
         bridge_connected = bridge_mac is not None
         ctx.font_size = 20
         if bridge_connected:
             ctx.rgb(0, 0.5, 0).move_to(0, -24).text(
-                f"Connected to {bridge_mac[-4:].upper()}"
+                f"connected: {bridge_mac[-4:].upper()}"
             )
+            ctx.rgb(0.9, 0.2, 0.9).move_to(0, 38).text("move to pitch bend")
+            ctx.rgb(0.9, 0.2, 0.9).move_to(0, 56).text("and modulate!")
         else:
-            ctx.rgb(0.95, 0.1, 0.2).move_to(0, -24).text("Not connected to bridge")
+            ctx.rgb(0.95, 0.1, 0.2).move_to(0, -70).text("not connected")
 
-        ctx.rgb(0.9, 0.2, 0.9).move_to(0, 48).text("Move to pitch")
-        ctx.rgb(0.9, 0.2, 0.9).move_to(0, 64).text("bend and modulate!")
+        ctx.rgb(0, 0.6, 0.4).move_to(0, -40).text("you are")
+
+        ctx.font_size = 40
+        ctx.rgb(1.0, 0.8, 1.0)
+
+        # Calculate width at desired font size
+        width = ctx.text_width(self.instrumentName)
+        max_width = 230
+
+        # Scale font down if text is too wide
+        if width > max_width:
+            ctx.font_size = 40 * max_width / width
+            # round to nearest 0.125 for consistency
+            ctx.font_size = int(ctx.font_size * 8) / 8
+
+        ctx.move_to(0, -6).text(self.instrumentName)
+
+    def update(self, delta: int) -> bool:
+        return True

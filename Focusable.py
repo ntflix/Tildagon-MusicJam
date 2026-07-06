@@ -4,6 +4,8 @@ from .ButtonEvent import ButtonEvent
 
 
 class Focusable:
+    held_buttons: set = set()
+
     def __init__(self): ...
 
     def draw(
