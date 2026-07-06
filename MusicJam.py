@@ -2,6 +2,7 @@
 
 import asyncio
 
+from MusicEvent import MusicEvent
 from app import App
 from imu import acc_read
 import random
@@ -36,35 +37,35 @@ class MusicJam(App):
         self.overlays = []
         self.cleared = False
         self.button_states = Buttons(self)
-        self.ui = MusicJamUI()
+        self.ui = MusicJamUI(onMusicEvent=self.handleButtonEvent)
 
         # Modulation state - avoid sending redundant packets
         self._last_xyz: tuple[float, float, float] = (0.0, 0.0, 0.0)
 
-        eventbus.on(ButtonDownEvent, self.handle_button_down, self)
-        eventbus.on(ButtonUpEvent, self.handle_button_up, self)
+        eventbus.on(ButtonDownEvent, self.handleButtonDown, self)
+        eventbus.on(ButtonUpEvent, self.handleButtonUp, self)
 
     async def run(self, render_update):
         # One render before join
         await render_update()
 
         # Join room (blocking until connected)
-        await self.comms.join_a_room()
+        await self.comms.joinRoom()
 
         # One render after join to show "connected to {mac}"
         await render_update()
 
         # Main loop: no UI update, no timer
         while True:
-            await asyncio.sleep_ms(100)  # pyright: ignore [reportAttributeAccessIssue]
-            self.modulate_per_accel()
+            await asyncio.sleep_ms(0)  # pyright: ignore [reportAttributeAccessIssue]
+            self.handleAccelerometer()
 
-    def modulate_per_accel(self):
+    def handleAccelerometer(self):
         if not self.ui.held_buttons:
             return
         self.xyz = acc_read()
         loop = asyncio.get_event_loop()
-        loop.create_task(self.comms.send_xyz(self.xyz))
+        loop.create_task(self.comms.sendXYZ(self.xyz))
 
     def draw(self, ctx):
         if not self.cleared:
@@ -77,21 +78,15 @@ class MusicJam(App):
     def update(self, delta: int):
         return False
 
-    def handle_button_event(self, noteName: str, buttonEventType: ButtonEvent):
+    def handleButtonEvent(self, musicEvent: MusicEvent, buttonEventType: ButtonEvent):
         loop = asyncio.get_event_loop()
-        loop.create_task(self.comms.send_note(noteName, buttonEventType))
+        loop.create_task(self.comms.sendEvent(musicEvent, buttonEventType))
 
-    def handle_button_down(self, buttonDownEvent: ButtonDownEvent):
-        event: tuple[str, ButtonEvent] | None = self.ui.handle_button(
-            buttonDownEvent, DOWN
-        )
-        if event is not None:
-            self.handle_button_event(event[0], event[1])
+    def handleButtonDown(self, buttonDownEvent: ButtonDownEvent):
+        self.ui.handleButton(buttonDownEvent, DOWN)
 
-    def handle_button_up(self, buttonUpEvent: ButtonUpEvent):
-        event: tuple[str, ButtonEvent] | None = self.ui.handle_button(buttonUpEvent, UP)
-        if event is not None:
-            self.handle_button_event(event[0], event[1])
+    def handleButtonUp(self, buttonUpEvent: ButtonUpEvent):
+        self.ui.handleButton(buttonUpEvent, UP)
 
     def quit(self):
         eventbus.emit(RequestStopAppEvent(self))

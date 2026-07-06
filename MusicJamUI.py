@@ -1,62 +1,72 @@
 # pyright: reportUnknownVariableType=false, reportUnknownParameterType=false, reportUnknownArgumentType=false, reportUnknownMemberType=false, reportUnannotatedClassAttribute=false, reportMissingParameterType=false, reportMissingImports=false
 
 from typing import Any, Callable
-from app_components import clear_background
-from events.input import BUTTON_TYPES
-
+from .MusicEvent import MusicEvent, NullEvent, Note
 from .Focusable import Focusable
 from .ButtonEvent import ButtonEvent, DOWN, UP
 
+from app_components import clear_background
+from events.input import Buttons, ButtonDownEvent, ButtonUpEvent
+from frontboards.twentyfour import BUTTONS as BUTTONS_24
+from frontboards.twentysix import (
+    BUTTONS as BUTTONS_26,
+    JOYSTICK as JOYSTICK_26,
+    PROX as PROX_26,
+    TOUCH as TOUCH_26,
+)
+
 
 class MusicJamUI(Focusable):
-    BUTTON_NOTE_NAMES = {
-        "UP": "A",
-        "RIGHT": "B",
-        "CONFIRM": "C",
-        "DOWN": "D",
-        "LEFT": "E",
-        "CANCEL": "F",
+    BUTTON_VALUES = {
+        "UP": Note(0),
+        "RIGHT": Note(1),
+        "CONFIRM": Note(2),
+        "DOWN": Note(3),
+        "LEFT": Note(4),
+        "CANCEL": Note(5),
+        # 2026 frontboard touchpads
+        "TOUCH1": Note(0),
+        "TOUCH2": Note(1),
+        "TOUCH3": Note(2),
+        "TOUCH4": Note(3),
+        "TOUCH5": Note(4),
+        "TOUCH6": Note(5),
+        "TOUCH7": Note(6),
+        "TOUCH8": Note(7),
+        "TOUCH9": Note(8),
+        "TOUCH10": Note(9),
+        "TOUCH11": Note(10),
+        "TOUCH12": Note(11),
     }
 
     bridge_mac: str | None = None
 
-    def __init__(self) -> None:
+    def __init__(self, onMusicEvent: Callable[[MusicEvent, ButtonEvent], None]) -> None:
         super().__init__()
         self.held_buttons: set[Any] = set()
+        self._onMusicEvent = onMusicEvent
 
-    def _note_label_for_button(self, button_name: str) -> str:
-        note_name = self.BUTTON_NOTE_NAMES.get(button_name)
-        if note_name is None:
-            raise ValueError(f"Unknown button name: {button_name}")
-        return note_name
+    def _note_event_for_button(self, button_name: str) -> MusicEvent:
+        event = self.BUTTON_VALUES.get(button_name)
+        if event is None:
+            return NullEvent()
+        return event
 
-    def _button_name(self, button) -> str | None:
-        current = button
-        while current is not None:
-            for name, button_type in BUTTON_TYPES.items():
-                if current == button_type:
-                    return name
-            current = getattr(current, "parent", None)
-        return None
+    def handleButton(
+        self, event: ButtonDownEvent, buttonEventType: ButtonEvent
+    ) -> None:
+        button_name = event.button.name
 
-    def handle_button(
-        self, event, buttonEventType: ButtonEvent
-    ) -> tuple[str, ButtonEvent] | None:
-        button_name = self._button_name(event.button)
-        if button_name not in self.BUTTON_NOTE_NAMES:
-            print(f"Unknown button: {button_name}")
-            return None
+        if event.button.group == "TwentyTwentySix":
+            # Handle as control button as only the TOUCH pads are notes on 2026 frontboard
+            print(f"Control button pressed: {button_name}")
 
         if buttonEventType == DOWN:
-            if button_name in self.held_buttons:
-                return None
             self.held_buttons.add(button_name)
-            return self._note_label_for_button(button_name), DOWN
+            self._onMusicEvent(self._note_event_for_button(button_name), DOWN)
         elif buttonEventType == UP:
-            if button_name not in self.held_buttons:
-                return None
             self.held_buttons.discard(button_name)
-            return self._note_label_for_button(button_name), UP
+            self._onMusicEvent(self._note_event_for_button(button_name), UP)
 
     def draw(self, ctx) -> None:
         clear_background(ctx)
