@@ -1,1 +1,2 @@
-MAGIC = bytes([0x45, 0x50, 0x4E, 0x57])  # "EPNW"
+__MAGIC_TEXT = "MJAM"
+MAGIC = bytes(__MAGIC_TEXT, "utf-8")

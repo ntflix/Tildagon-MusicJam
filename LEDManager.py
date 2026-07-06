@@ -1,3 +1,5 @@
+# pyright: reportUnknownVariableType=false, reportUnknownMemberType=false, reportUndefinedVariable=false, reportMissingImports=false
+
 from tildagonos import tildagonos
 from system.patterndisplay.events import *
 from system.eventbus import eventbus

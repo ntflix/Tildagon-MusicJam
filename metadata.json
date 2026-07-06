@@ -1,6 +1,6 @@
 {
-  "name": "MIDI",
-  "path": "apps.midi.ESPNOWMIDIClientApp",
-  "callable": "ESPNOWMIDIClient",
+  "name": "MusicJam",
+  "path": "apps.musicjam.MusicJam",
+  "callable": "MusicJam",
   "category": "Music"
 }
