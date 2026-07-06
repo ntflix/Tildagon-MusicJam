@@ -3,6 +3,7 @@
 import asyncio
 import random
 import time
+from typing import Literal
 
 from app import App
 from imu import acc_read
@@ -19,7 +20,7 @@ from .Instrument import Instrument
 from .Instruments import INSTRUMENTS
 from .ButtonEvent import DOWN, UP, ButtonEvent
 from .Comms import Comms
-from typing import Literal
+from .Room import Room
 
 GRAVITY = 9.81  # m/s2
 
@@ -41,6 +42,13 @@ class MusicJam(App):
     def get_random_octave(self):
         return random.randint(2, 5)
 
+    def onRoomJoined(self, room: Room):
+        hostMACStr = room.hostMAC.hex()
+        print(f"Joined room {room.id} with host {hostMACStr}")
+        self.instrumentUI.bridgeMAC = (  # pyright: ignore[reportOptionalMemberAccess]
+            hostMACStr[-4:].upper()
+        )
+
     def __init__(self):
         self.comms = Comms()
         self.overlays = []
@@ -60,8 +68,14 @@ class MusicJam(App):
 
     async def main_loop(self, delta_ticks: int, render_update):
         if self.activeUI == "instrumentUI":
-            self.handleAccelerometer()
-            self.instrumentUI.update(delta_ticks)
+            assert (
+                self.instrumentUI is not None
+            ), "Instrument UI must be active to update"
+            if not self.comms.room:
+                await self.comms.joinRoom(self.onRoomJoined)
+            else:
+                self.handleAccelerometer()
+                self.instrumentUI.update(delta_ticks)
         elif self.activeUI == "pickInstrumentUI":
             self.pickInstrumentUI.update(delta_ticks)
         else:

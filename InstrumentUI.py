@@ -39,7 +39,7 @@ class InstrumentUI(Focusable):
         "TOUCH12": Note(11),
     }
 
-    bridge_mac: str | None = None
+    bridgeMAC: str | None = None
     instrumentName: str
 
     def __init__(
@@ -82,18 +82,14 @@ class InstrumentUI(Focusable):
         ctx.text_align = ctx.CENTER
         ctx.text_baseline = ctx.MIDDLE
 
-        bridge_mac = self.bridge_mac
-        bridge_connected = bridge_mac is not None
+        bridge_connected = self.bridgeMAC is not None
         ctx.font_size = 20
         if bridge_connected:
-            ctx.rgb(0, 0.5, 0).move_to(0, -24).text(
-                f"connected: {bridge_mac[-4:].upper()}"
-            )
+            ctx.rgb(0, 0.5, 0).move_to(0, -70).text(f"connected: {self.bridgeMAC}")
             ctx.rgb(0.9, 0.2, 0.9).move_to(0, 38).text("move to pitch bend")
             ctx.rgb(0.9, 0.2, 0.9).move_to(0, 56).text("and modulate!")
         else:
             ctx.rgb(0.95, 0.1, 0.2).move_to(0, -70).text("not connected")
-
         ctx.rgb(0, 0.6, 0.4).move_to(0, -40).text("you are")
 
         ctx.font_size = 40
@@ -109,7 +105,10 @@ class InstrumentUI(Focusable):
             # round to nearest 0.125 for consistency
             ctx.font_size = int(ctx.font_size * 8) / 8
 
-        ctx.move_to(0, -6).text(self.instrumentName)
+        ctx.move_to(0, 0).text(self.instrumentName)
 
     def update(self, delta: int) -> bool:
         return True
+
+    def setBridgeMAC(self, mac: str) -> None:
+        self.bridgeMAC = mac
