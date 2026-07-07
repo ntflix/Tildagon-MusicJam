@@ -52,7 +52,7 @@ class InstrumentUI(Focusable):
         self.held_buttons: set[Any] = set()
         self.instrument = instrument
         self._onMusicEvent = onMusicEvent
-        eventbus.emit(PurpleRandom))
+        eventbus.emit(PurpleRandom)
 
     def _note_event_for_button(self, button_name: str) -> MusicEvent:
         event = self.BUTTON_VALUES.get(button_name)
