@@ -1,6 +1,6 @@
 {
   "name": "MusicJam",
-  "path": "apps.musicjam.MusicJam",
+  "path": "apps.musicjam.app",
   "callable": "MusicJam",
   "category": "Music"
 }
