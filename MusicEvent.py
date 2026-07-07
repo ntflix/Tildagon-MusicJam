@@ -1,4 +1,5 @@
 from typing import Literal
+from .MIDIEvent import MIDIEvent
 
 
 class MusicEvent:
@@ -12,6 +13,13 @@ class MusicEvent:
     def __str__(self):
         return f"{self.__class__.__name__}({self.type} with value {self.value})"
 
+    def toMIDIEvent(
+        self,
+        midi_channel: int,
+        status: Literal["on", "off"],
+        notesOffset: int,
+    ) -> MIDIEvent: ...
+
 
 class Note(MusicEvent):
     type: Literal["note"] = "note"
@@ -20,6 +28,18 @@ class Note(MusicEvent):
     def __init__(self, value: int):
         self.value = value
 
+    def toMIDIEvent(
+        self,
+        midi_channel: int,
+        status: Literal["on", "off"],
+        notesOffset: int,
+    ) -> MIDIEvent:
+        note = self.value + notesOffset
+        if status == "on":
+            return MIDIEvent(midi_channel, MIDIEvent.NOTE_ON, note, 127)
+        else:
+            return MIDIEvent(midi_channel, MIDIEvent.NOTE_OFF, note, 0)
+
 
 class NullEvent(MusicEvent):
     type: Literal["null"] = "null"
@@ -27,6 +47,3 @@ class NullEvent(MusicEvent):
 
     def __init__(self):
         self.value = 0
-
-
-# e: MusicEvent = NoteOn(value=60)

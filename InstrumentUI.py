@@ -4,16 +4,13 @@ from typing import Any, Callable
 from .MusicEvent import MusicEvent, NullEvent, Note
 from .Focusable import Focusable
 from .ButtonEvent import ButtonEvent, DOWN, UP
+from .Instrument import Instrument
+from .PurplePattern import PurpleRandom
 
-from app_components import clear_background
+from system.eventbus import eventbus
+from system.patterndisplay.events import PatternSet
 from events.input import Buttons, ButtonDownEvent, ButtonUpEvent
-from frontboards.twentyfour import BUTTONS as BUTTONS_24
-from frontboards.twentysix import (
-    BUTTONS as BUTTONS_26,
-    JOYSTICK as JOYSTICK_26,
-    PROX as PROX_26,
-    TOUCH as TOUCH_26,
-)
+from app_components import set_color
 
 
 class InstrumentUI(Focusable):
@@ -40,17 +37,22 @@ class InstrumentUI(Focusable):
     }
 
     bridgeMAC: str | None = None
-    instrumentName: str
+    instrument: Instrument
+
+    darkPurple = (0.2, 0.0, 0.2)
+    purpleText = (0.6, 0.4, 0.6)
+    lavenderText = (1.0, 0.8, 1.0)
 
     def __init__(
         self,
-        instrumentName: str,
+        instrument: Instrument,
         onMusicEvent: Callable[[MusicEvent, ButtonEvent], None],
     ) -> None:
         super().__init__()
         self.held_buttons: set[Any] = set()
-        self.instrumentName = instrumentName
+        self.instrument = instrument
         self._onMusicEvent = onMusicEvent
+        eventbus.emit(PurpleRandom))
 
     def _note_event_for_button(self, button_name: str) -> MusicEvent:
         event = self.BUTTON_VALUES.get(button_name)
@@ -77,7 +79,14 @@ class InstrumentUI(Focusable):
             self._onMusicEvent(self._note_event_for_button(button_name), UP)
 
     def draw(self, ctx) -> None:
-        clear_background(ctx)
+
+        yOffset = 48
+        lineHeight = 22
+
+        # background colour
+        set_color(ctx, self.darkPurple)
+        ctx.rectangle(-120, -120, 240, 240).fill()
+
         ctx.font = "sans-serif"
         ctx.text_align = ctx.CENTER
         ctx.text_baseline = ctx.MIDDLE
@@ -85,27 +94,69 @@ class InstrumentUI(Focusable):
         bridge_connected = self.bridgeMAC is not None
         ctx.font_size = 20
         if bridge_connected:
-            ctx.rgb(0, 0.5, 0).move_to(0, -70).text(f"connected: {self.bridgeMAC}")
-            ctx.rgb(0.9, 0.2, 0.9).move_to(0, 38).text("move to pitch bend")
-            ctx.rgb(0.9, 0.2, 0.9).move_to(0, 56).text("and modulate!")
+            # ctx.rgb(0, 0.5, 0).move_to(0, -70).text(f"connected: {self.bridgeMAC}")
+            ctx.rgb(self.purpleText[0], self.purpleText[1], self.purpleText[2])
+            ctx.move_to(0, -yOffset).text("you are")
+
+            ctx.font_size = 40
+            # Calculate width at desired font size
+            width = ctx.text_width(self.instrument.name)
+            max_width = 230
+
+            # Scale font down if text is too wide
+            if width > max_width:
+                ctx.font_size = 40 * max_width / width
+                # round to nearest 0.125 for consistency
+                ctx.font_size = int(ctx.font_size * 8) / 8
+
+            ctx.rgb(self.lavenderText[0], self.lavenderText[1], self.lavenderText[2])
+            ctx.move_to(0, 0).text(self.instrument.name)
+
+            ctx.rgb(self.purpleText[0], self.purpleText[1], self.purpleText[2])
+            ctx.font_size = 20
+
+            if self.instrument.hint is not None:
+                for i, line in enumerate(self.instrument.hint.splitlines()):
+                    ctx.move_to(0, yOffset + ((i - 1) * lineHeight)).text(line)
+            elif (
+                self.instrument.shouldPitchBend == True
+                and self.instrument.shouldModulate == True
+            ):
+                ctx.move_to(0, yOffset).text("tilt to pitch bend")
+                ctx.move_to(0, yOffset + 18).text("and modulate!")
+            elif self.instrument.shouldPitchBend == True:
+                ctx.move_to(0, yOffset).text("tilt to pitch bend!")
+            elif self.instrument.shouldModulate == True:
+                ctx.move_to(0, yOffset).text("tilt to modulate!")
+            else:
+                ctx.move_to(0, yOffset).text("press some buttons!")
         else:
-            ctx.rgb(0.95, 0.1, 0.2).move_to(0, -70).text("not connected")
-        ctx.rgb(0, 0.6, 0.4).move_to(0, -40).text("you are")
+            ctx.font_size = 20
+            ctx.rgb(0.8, 0.0, 0.1).move_to(0, -(yOffset + lineHeight)).text(
+                "not connected."
+            )
 
-        ctx.font_size = 40
-        ctx.rgb(1.0, 0.8, 1.0)
+            ctx.rgb(
+                self.purpleText[0],
+                self.purpleText[1],
+                self.purpleText[2],
+            ).move_to(0, -yOffset * 0.8).text("go to the")
 
-        # Calculate width at desired font size
-        width = ctx.text_width(self.instrumentName)
-        max_width = 230
+            ctx.font_size = 50
+            ctx.rgb(
+                self.lavenderText[0],
+                self.lavenderText[1],
+                self.lavenderText[2],
+            ).move_to(0, 0).text("MusicJam")
 
-        # Scale font down if text is too wide
-        if width > max_width:
-            ctx.font_size = 40 * max_width / width
-            # round to nearest 0.125 for consistency
-            ctx.font_size = int(ctx.font_size * 8) / 8
+            ctx.font_size = 20
+            ctx.rgb(
+                self.purpleText[0],
+                self.purpleText[1],
+                self.purpleText[2],
+            ).move_to(0, yOffset * 0.8).text("installation to play!")
 
-        ctx.move_to(0, 0).text(self.instrumentName)
+            # ctx.move_to(0, yOffset * 0.8 + lineHeight).text("to play!")
 
     def update(self, delta: int) -> bool:
         return True

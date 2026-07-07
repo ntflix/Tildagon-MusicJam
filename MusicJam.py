@@ -13,7 +13,7 @@ from system.scheduler.events import RequestStopAppEvent
 from events.input import Buttons, ButtonDownEvent, ButtonUpEvent
 
 from .MusicEvent import MusicEvent
-from .Focusable import Focusable
+from .MIDIEvent import MIDIEvent
 from .PickInstrumentUI import PickInstrumentUI
 from .InstrumentUI import InstrumentUI
 from .Instrument import Instrument
@@ -22,6 +22,7 @@ from .ButtonEvent import DOWN, UP, ButtonEvent
 from .Comms import Comms
 from .Room import Room
 
+NOTES_OFFSET = 57  # MIDI note number for A3
 GRAVITY = 9.81  # m/s2
 
 
@@ -39,9 +40,6 @@ class MusicJam(App):
     def get_random_midi_channel(self):
         return random.randint(0, 15)
 
-    def get_random_octave(self):
-        return random.randint(2, 5)
-
     def onRoomJoined(self, room: Room):
         hostMACStr = room.hostMAC.hex()
         print(f"Joined room {room.id} with host {hostMACStr}")
@@ -56,7 +54,8 @@ class MusicJam(App):
         self.button_states = Buttons(self)
         self.pickInstrumentUI = PickInstrumentUI(
             app=self,
-            instruments=sorted(INSTRUMENTS, key=lambda i: i.midiChannel),
+            # instruments=sorted(INSTRUMENTS, key=lambda i: i.midiChannel),
+            instruments=list(INSTRUMENTS),
             onInstrumentSelected=lambda instrument: self.onInstrumentSelected(
                 instrument
             ),
@@ -72,10 +71,12 @@ class MusicJam(App):
                 self.instrumentUI is not None
             ), "Instrument UI must be active to update"
             if not self.comms.room:
-                await self.comms.joinRoom(self.onRoomJoined)
+                eventLoop = asyncio.get_event_loop()
+                eventLoop.create_task(self.comms.joinRoom(self.onRoomJoined))
             else:
                 self.handleAccelerometer()
-                self.instrumentUI.update(delta_ticks)
+
+            self.instrumentUI.update(delta_ticks)
         elif self.activeUI == "pickInstrumentUI":
             self.pickInstrumentUI.update(delta_ticks)
         else:
@@ -90,25 +91,11 @@ class MusicJam(App):
             delta_ticks = time.ticks_diff(cur_time, last_time)
             await self.main_loop(delta_ticks, render_update)
             last_time = cur_time
-        # One render before join
-        await render_update()
-
-        # Join room (blocking until connected)
-        # await self.comms.joinRoom()
-
-        # One render after join to show "connected to {mac}"
-        await render_update()
-
-        # Main loop: no UI update, no timer
-        while True:
-            # await asyncio.sleep_ms(0)  # pyright: ignore [reportAttributeAccessIssue]
-            # self.handleAccelerometer()
-            await render_update()
 
     def onInstrumentSelected(self, instrument: Instrument):
         self.instrument = instrument
         self.instrumentUI = InstrumentUI(
-            instrumentName=self.instrument.name,
+            instrument=self.instrument,
             onMusicEvent=self.handleMusicEvent,
         )
         eventbus.on(ButtonDownEvent, self.handleButtonDown, self)
@@ -125,12 +112,48 @@ class MusicJam(App):
         assert (
             self.instrumentUI is not None
         ), "Instrument UI must be active to handle accelerometer"
+        assert (
+            self.instrument is not None
+        ), "Instrument must be selected to handle accelerometer"
 
         if not self.instrumentUI.held_buttons:
             return
         self.xyz = acc_read()
+        modulation: int | None = None
+        pitchBend: int | None = None
         loop = asyncio.get_event_loop()
-        loop.create_task(self.comms.sendXYZ(self.xyz))
+
+        if self.instrument.shouldModulate:
+            modulation = round((-self.xyz[0] + GRAVITY) / (2 * GRAVITY) * 127)
+            modulation = max(0, min(127, modulation))  # Clamp to [0, 127]
+            modulationEvent = MIDIEvent(
+                self.instrument.midiChannel,  # pyright: ignore[reportOptionalMemberAccess]
+                MIDIEvent.CONTROL_CHANGE,
+                1,  # Modulation wheel CC number
+                modulation,
+            )
+            loop.create_task(
+                self.comms.sendMIDIEvent(
+                    modulationEvent,
+                    self.instrument.midiChannel,  # pyright: ignore[reportOptionalMemberAccess]
+                )
+            )  # pyright: ignore[reportOptionalMemberAccess]
+
+        if self.instrument.shouldPitchBend:
+            pitchBend = round((self.xyz[1] + GRAVITY) / (2 * GRAVITY) * 16383)
+            pitchBend = max(0, min(16383, pitchBend))  # Clamp to [0, 16383]
+            pitchBendEvent = MIDIEvent(
+                self.instrument.midiChannel,  # pyright: ignore[reportOptionalMemberAccess]
+                MIDIEvent.PITCH_BEND,
+                pitchBend & 0x7F,  # LSB
+                pitchBend >> 7,  # MSB
+            )
+            loop.create_task(
+                self.comms.sendMIDIEvent(
+                    pitchBendEvent,
+                    self.instrument.midiChannel,  # pyright: ignore[reportOptionalMemberAccess]
+                )  # pyright: ignore[reportOptionalMemberAccess]
+            )
 
     def draw(self, ctx):
         if not self.cleared:
@@ -145,11 +168,20 @@ class MusicJam(App):
         ctx.restore()
 
     def handleMusicEvent(self, musicEvent: MusicEvent, buttonEventType: ButtonEvent):
+        if self.comms.room is None:
+            print("Not connected to a room, cannot send MIDI event")
+            return
+
+        midiEvent = musicEvent.toMIDIEvent(
+            midi_channel=self.instrument.midiChannel,  # pyright: ignore[reportOptionalMemberAccess]
+            status="on" if buttonEventType == DOWN else "off",
+            notesOffset=NOTES_OFFSET,  # pyright: ignore[reportOptionalMemberAccess]
+        )
+
         loop = asyncio.get_event_loop()
         loop.create_task(
-            self.comms.sendEvent(
-                musicEvent,
-                buttonEventType,
+            self.comms.sendMIDIEvent(
+                midiEvent,
                 self.instrument.midiChannel,  # pyright: ignore[reportOptionalMemberAccess]
             )
         )

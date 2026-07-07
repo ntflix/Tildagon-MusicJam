@@ -5,11 +5,14 @@ from typing import Callable
 import aioespnow
 
 from .ButtonEvent import ButtonEvent
-from .MusicEvent import MusicEvent
+from .MIDIEvent import MIDIEvent
 from .WiFiReset import wifi_reset
 from .ESPNOWMessageType import ESPNOWMessageTypes
+from .ESPNOWBridgePacket import ESPNOWBridgePacket
 from .Room import Room
 from .Magic import MAGIC, MagicError
+
+GRAVITY = 9.81  # m/s2
 
 
 class HostAndMessage:
@@ -61,6 +64,12 @@ class Comms:
                     f"Room advertisement received: roomID={roomID}, capabilities={capabilities}"
                 )
                 self.room = Room(roomID, message.host)
+                try:
+                    self.__espnow.add_peer(message.host)
+                except OSError as e:
+                    print(
+                        f"Error adding peer {message.host.hex()}: {e}"
+                    )  # this is here because sometimes this code path is reached even though the room is added already?? weird
                 if self.onRoomJoined:
                     self.onRoomJoined(self.room)
                 else:
@@ -75,17 +84,34 @@ class Comms:
         if msg is None:
             raise TimeoutError("No message received")
 
-        self.processMessage(HostAndMessage(host, msg))
+        try:
+            self.processMessage(HostAndMessage(host, msg))
+        except Exception as e:
+            print(f"Error processing message from {host.hex()}: {e}")
+            print(f"\tMessage payload: {msg.hex()}")
 
-    async def sendEvent(
+    async def _send(self, address: bytes, messageType: int, payload: bytes) -> None:
+        message = MAGIC + bytes([messageType]) + payload
+        await self.__espnow.asend(address, message)
+
+    async def sendMIDIEvent(
         self,
-        musicEvent: MusicEvent,
-        buttonEventType: ButtonEvent,
+        midiEvent: MIDIEvent,
         midiChannel: int,
     ):
-        print(
-            f"sendEvent: {musicEvent}, buttonEventType: {buttonEventType}, midiChannel: {midiChannel}"
-        )
+        print(f"sendMIDIEvent: {midiEvent}, midiChannel: {midiChannel}")
+        if self.room is None:
+            print("Not connected to a room, cannot send MIDI event")
+            return
+        try:
+            payload = ESPNOWBridgePacket.fromMIDIEvent(midiEvent)
+            await self._send(
+                self.room.hostMAC,  # pyright: ignore[reportOptionalMemberAccess]
+                ESPNOWMessageTypes.DATA,
+                payload.bytes,
+            )
+        except Exception as e:
+            print(f"Error sending MIDI event: {e}")
 
     async def sendXYZ(self, xyz: tuple[float, float, float]):
         print(f"sendXYZ: {xyz}")
