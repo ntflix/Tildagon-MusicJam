@@ -97,6 +97,8 @@ class MusicJam(App):
         self.instrumentUI = InstrumentUI(
             instrument=self.instrument,
             onMusicEvent=self.handleMusicEvent,
+            comms=self.comms,
+            notesOffset=NOTES_OFFSET,
         )
         eventbus.on(ButtonDownEvent, self.handleButtonDown, self)
         eventbus.on(ButtonUpEvent, self.handleButtonUp, self)

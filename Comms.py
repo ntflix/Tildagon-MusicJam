@@ -113,6 +113,26 @@ class Comms:
         except Exception as e:
             print(f"Error sending MIDI event: {e}")
 
+    async def sendNoteKeepalive(self, channel: int, note: int) -> None:
+        """
+        Send a NOTE_KEEPALIVE message to keep a held note alive.
+
+        Per the bridge protocol, keepalive payload is [channel, note] (2 bytes).
+        """
+        print(f"sendNoteKeepalive: channel={channel}, note={note}")
+        if self.room is None:
+            print("Not connected to a room, cannot send keepalive")
+            return
+        try:
+            payload = bytes([channel & 0x0F, note & 0x7F])
+            await self._send(
+                self.room.hostMAC,  # pyright: ignore[reportOptionalMemberAccess]
+                ESPNOWMessageTypes.NOTE_KEEPALIVE,
+                payload,
+            )
+        except Exception as e:
+            print(f"Error sending note keepalive: {e}")
+
     async def sendXYZ(self, xyz: tuple[float, float, float]):
         print(f"sendXYZ: {xyz}")
 

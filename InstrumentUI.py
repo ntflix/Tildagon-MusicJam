@@ -1,11 +1,14 @@
-# pyright: reportUnknownVariableType=false, reportUnknownParameterType=false, reportUnknownArgumentType=false, reportUnknownMemberType=false, reportUnannotatedClassAttribute=false, reportMissingParameterType=false, reportMissingImports=false
+# pyright: reportUnknownVariableType=false, reportUnknownParameterType=false, reportUnknownArgumentType=false, reportUnknownMemberType=false, reportUnannotatedClassAttribute=false, reportMissingParameterType=false, reportMissingImports=false, reportAttributeAccessIssue=false
 
+import asyncio
+import time
 from typing import Any, Callable
 from .MusicEvent import MusicEvent, NullEvent, Note
 from .Focusable import Focusable
 from .ButtonEvent import ButtonEvent, DOWN, UP
 from .Instrument import Instrument
 from .PurplePattern import PurpleRandom
+from .Comms import Comms
 
 from system.eventbus import eventbus
 from system.patterndisplay.events import PatternSet
@@ -38,20 +41,33 @@ class InstrumentUI(Focusable):
 
     bridgeMAC: str | None = None
     instrument: Instrument
+    _comms: Comms
+    _notesOffset: int
 
     darkPurple = (0.2, 0.0, 0.2)
     purpleText = (0.6, 0.4, 0.6)
     lavenderText = (1.0, 0.8, 1.0)
 
+    # Keepalive tracking
+    _held_notes: dict[str, tuple[int, int]] = {}  # button_name -> (channel, note)
+    _last_keepalive_time: int = 0
+    _keepalive_interval_ms: int = 50  # Send keepalive every 50ms
+
     def __init__(
         self,
         instrument: Instrument,
         onMusicEvent: Callable[[MusicEvent, ButtonEvent], None],
+        comms: Comms,
+        notesOffset: int,
     ) -> None:
         super().__init__()
         self.held_buttons: set[Any] = set()
+        self._held_notes = {}  # Initialize held notes tracking
         self.instrument = instrument
         self._onMusicEvent = onMusicEvent
+        self._comms = comms
+        self._notesOffset = notesOffset
+        self._last_keepalive_time = 0
         eventbus.emit(PurpleRandom)
 
     def _note_event_for_button(self, button_name: str) -> MusicEvent:
@@ -73,9 +89,17 @@ class InstrumentUI(Focusable):
             if button_name in self.held_buttons:
                 return
             self.held_buttons.add(button_name)
-            self._onMusicEvent(self._note_event_for_button(button_name), DOWN)
+
+            # Track the note value for this button (for keepalive purposes)
+            music_event = self._note_event_for_button(button_name)
+            if isinstance(music_event, Note):
+                midi_note = music_event.value + self._notesOffset
+                self._held_notes[button_name] = (self.instrument.midiChannel, midi_note)
+
+            self._onMusicEvent(music_event, DOWN)
         elif buttonEventType == UP:
             self.held_buttons.discard(button_name)
+            self._held_notes.pop(button_name, None)  # Remove from tracking
             self._onMusicEvent(self._note_event_for_button(button_name), UP)
 
     def draw(self, ctx) -> None:
@@ -159,6 +183,17 @@ class InstrumentUI(Focusable):
             # ctx.move_to(0, yOffset * 0.8 + lineHeight).text("to play!")
 
     def update(self, delta: int) -> bool:
+        # Send keepalives for held notes at regular intervals
+        current_time = time.ticks_ms()
+
+        if self._held_notes and (
+            current_time - self._last_keepalive_time >= self._keepalive_interval_ms
+        ):
+            loop = asyncio.get_event_loop()
+            for channel, note in self._held_notes.values():
+                loop.create_task(self._comms.sendNoteKeepalive(channel, note))
+            self._last_keepalive_time = current_time
+
         return True
 
     def setBridgeMAC(self, mac: str) -> None:
