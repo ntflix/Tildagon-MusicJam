@@ -4,6 +4,7 @@ import asyncio
 import random
 import time
 from typing import Literal
+import network
 
 from app import App
 from imu import acc_read
@@ -50,7 +51,22 @@ class MusicJam(App):
         )
 
     def __init__(self):
+        # espnow_service.subscribe(handler=print, app=self)
+        sta = network.WLAN(network.STA_IF)
         scheduler.stop_app(espnow_service)
+        pm = sta.PM_NONE
+        # After a hard reset, we need to wait for the wifi driver to initialize
+        # before setting power management
+        for attempt in range(3):
+            try:
+                sta.config(pm=pm)
+                break
+            except OSError as e:
+                if attempt == 2:
+                    print("ESP-NOW: deferring power management (%s)" % e)
+                    return
+                time.sleep_ms(50)
+
         self.comms = Comms()
         self.overlays = []
         self.cleared = False

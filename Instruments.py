@@ -1,11 +1,10 @@
 from .Instrument import Instrument
 
-
 INSTRUMENTS: list[Instrument] = [
     Instrument(
         "Dreamy Vox",
         1,
-        hint="hold buttons to play\tilt to modulate and bend!",
+        hint="hold buttons to play\ntilt to modulate and bend!",
     ),
     Instrument(
         "Phasing Plucks",
