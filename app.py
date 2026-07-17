@@ -9,7 +9,9 @@ from app import App
 from imu import acc_read
 from app_components import clear_background
 from system.eventbus import eventbus
+from system.scheduler import scheduler
 from system.scheduler.events import RequestStopAppEvent
+from system.espnow import espnow_service
 from events.input import Buttons, ButtonDownEvent, ButtonUpEvent
 
 from .MusicEvent import MusicEvent
@@ -48,6 +50,7 @@ class MusicJam(App):
         )
 
     def __init__(self):
+        scheduler.stop_app(espnow_service)
         self.comms = Comms()
         self.overlays = []
         self.cleared = False
@@ -201,6 +204,7 @@ class MusicJam(App):
         self.instrumentUI.handleButton(buttonUpEvent, UP)
 
     def quit(self):
+        scheduler.start_app(espnow_service)
         eventbus.emit(RequestStopAppEvent(self))
 
 
