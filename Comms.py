@@ -142,6 +142,9 @@ class Comms:
         print(f"sendXYZ: {xyz}")
 
     async def joinRoom(self, onRoomJoined: Callable[[Room], None]):
+        if self.room is not None:
+            print(f"Already in room {self.room}, not joining again.")
+            return
         self.room = None
         self.onRoomJoined = onRoomJoined
 
