@@ -25,15 +25,15 @@ class InstrumentUI(Focusable):
         "E": Note(4),
         "F": Note(5),
         # 2026 frontboard touchpads
-        "TOUCH1": Note(0),
-        "TOUCH2": Note(1),
-        "TOUCH3": Note(2),
-        "TOUCH4": Note(3),
-        "TOUCH5": Note(4),
-        "TOUCH6": Note(5),
-        "TOUCH7": Note(6),
-        "TOUCH8": Note(7),
-        "TOUCH9": Note(8),
+        "TOUCH01": Note(0),
+        "TOUCH02": Note(1),
+        "TOUCH03": Note(2),
+        "TOUCH04": Note(3),
+        "TOUCH05": Note(4),
+        "TOUCH06": Note(5),
+        "TOUCH07": Note(6),
+        "TOUCH08": Note(7),
+        "TOUCH09": Note(8),
         "TOUCH10": Note(9),
         "TOUCH11": Note(10),
         "TOUCH12": Note(11),
@@ -80,6 +80,9 @@ class InstrumentUI(Focusable):
         self, event: ButtonDownEvent, buttonEventType: ButtonEvent
     ) -> None:
         button_name = event.button.name
+        if button_name not in self.BUTTON_VALUES:
+            print(f"Unknown button pressed: {button_name}")
+            return
 
         if event.button.group == "TwentyTwentySix":
             # Handle as control button as only the TOUCH pads are notes on 2026 frontboard

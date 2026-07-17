@@ -3,6 +3,10 @@
 from typing import Callable
 
 import aioespnow
+import asyncio
+
+from system.espnow import espnow_service
+from system.espnow.events import EspNowReceiveEvent
 
 from .ButtonEvent import ButtonEvent
 from .MIDIEvent import MIDIEvent
@@ -66,6 +70,7 @@ class Comms:
                 self.room = Room(roomID, message.host)
                 try:
                     self.__espnow.add_peer(message.host)
+                    print(f"Added peer {message.host.hex()} for room {roomID}")
                 except OSError as e:
                     print(
                         f"Error adding peer {message.host.hex()}: {e}"
@@ -79,11 +84,11 @@ class Comms:
                 f"Received instruments message: {message.payload[5:].decode('utf-8')}"
             )
 
-    async def _receive(self) -> None:
-        host, msg = await self.__espnow.arecv()
+    def _on_message(self, event: EspNowReceiveEvent):
+        host, msg = event.mac, event.msg
         if msg is None:
-            raise TimeoutError("No message received")
-
+            print(f"Received message from {host.hex()} but no payload")
+            return
         try:
             self.processMessage(HostAndMessage(host, msg))
         except Exception as e:
@@ -140,9 +145,11 @@ class Comms:
         self.room = None
         self.onRoomJoined = onRoomJoined
 
+        espnow_service.subscribe(
+            handler=self._on_message,
+            app=self,
+            predicate=lambda e: e.msg.startswith(MAGIC),
+        )
+
         while self.room is None:
-            try:
-                await self._receive()
-            except TimeoutError:
-                print("Timeout waiting for room info, retrying...")
-                continue
+            await asyncio.sleep(0)
