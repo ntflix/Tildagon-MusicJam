@@ -44,7 +44,7 @@ class MusicJam(App):
     activeUI: Literal["pickInstrumentUI", "instrumentUI"] = "pickInstrumentUI"
 
     comms: Comms
-    request_fast_updates = False
+    request_fast_updates = True
     xyz: tuple[float, float, float] = (0.0, 0.0, 0.0)
     xyz_threshold: float = 0.1  # Minimum change in acceleration to send
     instrument: Instrument | None = None
@@ -190,8 +190,7 @@ class MusicJam(App):
                 self.instrumentUI is not None
             ), "Instrument UI must be active to update"
             if not self.comms.room:
-                eventLoop = asyncio.get_event_loop()
-                eventLoop.create_task(self.comms.joinRoom(self.onRoomJoined))
+                await self.comms.joinRoom(self.onRoomJoined)
             else:
                 self.handleAccelerometer()
 
