@@ -2,8 +2,18 @@ from .Instrument import Instrument
 
 
 INSTRUMENTS: list[Instrument] = [
-    Instrument("Dreamy Vox", 1),
-    Instrument("Phasing Plucks", 13, shouldPitchBend=False, shouldModulate=True),
+    Instrument(
+        "Dreamy Vox",
+        1,
+        hint="hold buttons to play\tilt to modulate and bend!",
+    ),
+    Instrument(
+        "Phasing Plucks",
+        13,
+        shouldPitchBend=False,
+        shouldModulate=True,
+        hint="hold buttons to play\ntilt to glitch!",
+    ),
     Instrument(
         "Chiptune Kit",
         5,
