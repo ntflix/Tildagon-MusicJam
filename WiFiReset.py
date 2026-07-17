@@ -4,7 +4,7 @@ import network, time
 
 
 def wifi_reset():  # Reset wifi to AP_IF off, STA_IF on and disconnected
-    sta = network.WLAN(network.STAIF)
+    sta = network.WLAN(network.STA_IF)
     sta.active(False)
     sta.active(True)
     sta.config(channel=11)
