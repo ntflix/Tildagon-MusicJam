@@ -21,6 +21,7 @@ from .Instruments import INSTRUMENTS
 from .ButtonEvent import DOWN, UP, ButtonEvent
 from .Comms import Comms
 from .Room import Room
+from .Performancer import killOtherStuff
 
 NOTES_OFFSET = 57  # MIDI note number for A3
 GRAVITY = 9.81  # m/s2
@@ -48,6 +49,7 @@ class MusicJam(App):
         )
 
     def __init__(self):
+        killOtherStuff()
         self.comms = Comms()
         self.overlays = []
         self.cleared = False
