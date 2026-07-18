@@ -4,13 +4,14 @@ from typing import Callable
 
 import aioespnow
 import asyncio
+import network
 
 from system.espnow import espnow_service
 from system.espnow.events import EspNowReceiveEvent
 
 from .ButtonEvent import ButtonEvent
 from .MIDIEvent import MIDIEvent
-from .WiFiReset import wifi_reset
+from .WiFiReset import wifi_reset, CHANNEL
 from .ESPNOWMessageType import ESPNOWMessageTypes
 from .ESPNOWBridgePacket import ESPNOWBridgePacket
 from .Room import Room
@@ -40,6 +41,7 @@ class Comms:
         self.__sta = wifi_reset()
         self.__espnow = aioespnow.AIOESPNow()
         self.__espnow.config(timeout_ms=5000)
+        self.__espnow.config(rxbuf=4096, timeout_ms=0)
         print(f"STA channel: {self.__sta.config('channel')}")
         self.__espnow.active(True)
 
@@ -69,7 +71,12 @@ class Comms:
                 )
                 self.room = Room(roomID, message.host)
                 try:
-                    self.__espnow.add_peer(message.host)
+                    self.__espnow.add_peer(
+                        message.host,
+                        channel=CHANNEL,
+                        ifidx=network.WLAN.IF_STA,
+                        encrypt=False,
+                    )
                     print(f"Added peer {message.host.hex()} for room {roomID}")
                 except OSError as e:
                     print(

@@ -1,3 +1,5 @@
+import time
+
 from system.scheduler import scheduler
 from system.hexpansion.app import HexpansionManagerApp
 from system.patterndisplay.app import PatternDisplay
@@ -24,4 +26,5 @@ def killOtherStuff():
     scheduler.stop_app(NotificationService())
     scheduler.stop_app(PowerManager())
 
+    time.sleep(1)
     print("NOTICE: Stopped other apps to make way for MusicJam")
